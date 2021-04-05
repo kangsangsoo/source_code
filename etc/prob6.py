@@ -58,3 +58,17 @@ for j in range(7):
     m = m + c[j] * gmpy2.powmod(int(M_), -1, n[j]) * M_
 m = int(m) % M
 print(long_to_bytes(gmpy2.root(m, 7)))
+
+### 이진탐색도 가능~
+l = gmpy2.mpz(0)
+r = M
+while True:
+    mid = gmpy2.mpz((l+r)//2)
+    v = gmpy2.mpz(pow(mid, 7))
+    if v == m:
+        print(long_to_bytes(mid))
+        break
+    if v > m:
+        r = mid - 1
+    else:
+        l = mid + 1
