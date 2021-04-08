@@ -1,0 +1,26 @@
+import requests, json
+from Crpyto.Util.number import long_to_bytes
+
+URL = "http://aes.cryptohack.org/ecb_oracle/encrypt/"
+
+flag = ""
+
+for i in range(8, 34):
+    s = "00" * (i)  
+    url = URL + s
+    res = requests.get(url)
+
+    c = res.json()["ciphertext"]
+    for j in range(39, 127):
+        num = (16 - (i + 25)%16)
+        url = URL + hex(j)[2:] + flag + ("0" + hex(num)[2:]) * num
+ 
+        res = requests.get(url)
+        c_ = res.json()["ciphertext"]
+
+        if c[64:96] == c_[0:32]:
+            flag = hex(j)[2:] + flag
+            print(flag)
+            break
+
+print(long_to_bytes(int(flag, 16)))
