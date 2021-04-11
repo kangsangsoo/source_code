@@ -5,7 +5,7 @@ URL = "http://aes.cryptohack.org/ctrime/encrypt/"
 
 
 
-
+# "crypto{CRIM 에서 끊어지기 때문에 아무거나 가정하고 돌려보면 됨. => E
 plaintext = "crypto{"
 
 for i in range(20):
@@ -23,3 +23,4 @@ for i in range(20):
             min_num = length
         
     plaintext = plaintext + chr(min_ch)
+    print(plaintext)
