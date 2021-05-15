@@ -7,7 +7,7 @@ URL = "http://aes.cryptohack.org/bean_counter/encrypt"
 res = requests.get(URL).json()["encrypted"]
 
 
-key = "55cce30e8f5e0322f6da7e4f161b49c7"
+key = "8f3209822d684b64d273f45730d046ce"
 data = ""
 
 for i in range(0, len(res), 2):
