@@ -1,0 +1,19 @@
+
+
+
+# CRT
+
+a = [2, 3 ,5]
+m = [5, 11 ,17]
+
+M = 1
+
+for i in m:
+    M = M * i
+
+x = 0
+
+for i in range(len(a)):
+    x = (x + a[i] * (M//m[i]) * pow(M//m[i], -1, m[i])) % M
+
+print(x)
