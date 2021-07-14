@@ -1,0 +1,31 @@
+
+import numpy as np
+
+v1 = (4,1,3,-1); v2 = (2,1,-3,4); v3 = (1,0,-2,7); v4 = (6, 2, 9, -5)
+
+v = []
+
+v.append(np.array(v1))
+v.append(np.array(v2))
+v.append(np.array(v3))
+v.append(np.array(v4))
+
+
+u = []
+
+
+
+
+u.append(v[0])
+for i in range(1, 4):
+    sum = 0
+    for j in range(i):
+        sum = sum - (np.dot(u[j], v[i]) / np.dot(u[j],u[j]) * u[j])
+
+    for j in range(4):
+        sum[j] = round(sum[j], 5)
+    print(sum)
+    
+    u.append(v[i] + sum)
+
+print(u)
