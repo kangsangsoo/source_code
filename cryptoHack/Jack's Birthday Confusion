@@ -1,0 +1,13 @@
+
+val1 = 1 << 11
+
+P = 1
+
+for i in range(1, val1):
+    P = P * (1 - i/val1)
+
+    print(1 - P)
+
+    if (1 - P) > 0.75:
+        print(i)
+        break
