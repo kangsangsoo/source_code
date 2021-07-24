@@ -1,0 +1,46 @@
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import hashlib
+from Crypto.Util.number import long_to_bytes
+
+
+def is_pkcs7_padded(message):
+    padding = message[-message[-1]:]
+    return all(padding[i] == len(padding) for i in range(0, len(padding)))
+
+
+def decrypt_flag(shared_secret: int, iv: str, ciphertext: str):
+    # Derive AES key from shared secret
+    sha1 = hashlib.sha1()
+    sha1.update(str(shared_secret).encode('ascii'))
+    key = sha1.digest()[:16]
+    # Decrypt flag
+    ciphertext = bytes.fromhex(ciphertext)
+    iv = bytes.fromhex(iv)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    plaintext = cipher.decrypt(ciphertext)
+
+    if is_pkcs7_padded(plaintext):
+        return unpad(plaintext, 16).decode('ascii')
+    else:
+        return plaintext.decode('ascii')
+
+
+'''
+sage
+sage: A = 0x3210fa73cf8abca2
+sage: g = 2
+sage: F = FiniteField(p)
+sage: a = F(2)
+sage: discrete_log(A, a)
+1220299204546936237
+sage: pow(g, 1220299204546936237) == A
+'''
+
+
+
+shared_secret = 13953042943326351335
+iv = "8ea0dc4aba720c574751f9d7ef4fe453"
+ciphertext = "500c30231199c60eaac005515ffe06739f2f5a1a0f37e2f7d7918559ba7b602b"
+
+print(decrypt_flag(shared_secret, iv, ciphertext))
