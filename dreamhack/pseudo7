@@ -1,0 +1,101 @@
+from pwn import *
+import random
+
+HOST = "host1.dreamhack.games"
+PORT = 13819
+
+outputs = []
+
+r = remote(HOST, PORT)
+
+
+# 624 배수가 되게끔 
+def get_md():
+
+    r.sendlineafter("> ", "1")
+    order = int(r.recvuntil(" ")[:3].decode())
+    r.recvuntil(" : ")
+    number = r.recvline()
+
+    # order % 624 == 0 일 때 까지 ㄱㄱ
+    
+    while order % 624 != 623:
+        r.sendlineafter("> ", "1")
+        order = int(r.recvuntil(" ")[:3].decode())
+        log.info(str(order))
+        r.recvuntil(" : ")
+        number = r.recvline()
+
+    # 지금부터 저장
+    for i in range(624):
+        r.sendlineafter("> ", "1")
+        order = r.recvuntil(" ")[:3]
+        r.recvuntil(" : ")
+        number = int(r.recvline()[:-1].decode())
+        outputs.append(number)
+
+
+
+
+
+TemperingMaskB = 0x9d2c5680
+TemperingMaskC = 0xefc60000
+
+def untemper(y):
+    y = undoTemperShiftL(y)
+    y = undoTemperShiftT(y)
+    y = undoTemperShiftS(y)
+    y = undoTemperShiftU(y)
+    return y
+
+def undoTemperShiftL(y):
+    last14 = y >> 18
+    final = y ^ last14
+    return final
+
+def undoTemperShiftT(y):
+    first17 = y << 15
+    final = y ^ (first17 & TemperingMaskC)
+    return final
+
+def undoTemperShiftS(y):
+    a = y << 7
+    b = y ^ (a & TemperingMaskB)
+    c = b << 7
+    d = y ^ (c & TemperingMaskB)
+    e = d << 7
+    f = y ^ (e & TemperingMaskB)
+    g = f << 7
+    h = y ^ (g & TemperingMaskB)
+    i = h << 7
+    final = y ^ (i & TemperingMaskB)
+    return final
+
+def undoTemperShiftU(y):
+    a = y >> 11
+    b = y ^ a
+    c = b >> 11
+    final = y ^ c
+    return final
+
+
+
+
+
+
+get_md()
+
+recovered_state = (3, tuple([ untemper(v) for v in outputs[:624] ] + [0]), None)
+
+random.setstate(recovered_state)
+
+res = []
+for i in range(624+7):
+    res.append(random.getrandbits(32))
+
+for i in range(624, 624+7):
+    print(res[i])
+
+
+
+r.interactive()
