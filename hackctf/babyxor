@@ -1,0 +1,24 @@
+from pwn import *
+from Crypto.Util.number import long_to_bytes
+
+
+HOST = "ctf.j0n9hyun.xyz"
+PORT = 9001
+
+
+r = remote(HOST, PORT)
+
+r.sendlineafter("> ", "2")
+r.sendlineafter("key len: ", "8")
+
+r.sendlineafter("> ", "1")
+
+res = r.recvline()[2:-2]
+
+k = "HackCTF{"
+key = [0] * 8
+for i in range(8):
+    key[i] = ord(k[i]) ^ int(res[2*i:2*i + 2], 16) 
+
+for i in range(0, 44):
+    print(chr(key[i%8] ^ int(res[2 * i: 2 * i+2], 16)), end="")
