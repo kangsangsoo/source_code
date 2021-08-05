@@ -1,0 +1,45 @@
+from pwn import *
+from Crypto.Util.number import long_to_bytes
+import base64
+
+f = open("./HelloCrypto/ciphertext", "rb")
+cipher = base64.b64decode(f.read())
+
+print(type(cipher))
+
+c_len = len(cipher) // 2
+
+strxor_key = "HelloCrypto"
+p = "HackCTF{"
+key = [0] * 14
+
+P = [0] * c_len
+
+for i in range(8):
+    key[i] = (int(cipher[2*i:2*i+2], 16) - (ord(p[i]) ^ ord(strxor_key[i])) - 111) % 128
+    print(chr(key[i]), end="")
+    P[34 + i] = key[i]
+
+# print(P[34])
+
+
+
+for i in range(36, 42):
+    key[i % 14] = (int(cipher[2*i:2*i+2], 16) - ( P[i]  ) - 111) % 128
+    print(chr(key[i % 14]), end="")
+
+print()
+
+for i in range(0, c_len):
+    # if i % 14 >= 8:
+        # print(" ", end="")
+        # continue
+    P[i] = ((int(cipher[2*i:2*i+2], 16) - key[i%14] - 0xdeadbeef) % 128) ^ ord(strxor_key[i%len(strxor_key)]) % 128
+    print(chr(P[i]), end="")
+
+
+print()
+
+
+
+
