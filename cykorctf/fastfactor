@@ -1,0 +1,41 @@
+from pwn import *
+import primefac
+from Crypto.Util.number import inverse
+
+r = remote("ipwn.kr", 12510)
+
+r.sendlineafter("Press Enter to join the festival\n", "")
+
+
+def func():
+    global r
+    r.recvuntil("N : ")
+    N = int(r.recvline()[:-1])
+    print(N)
+    r.recvuntil("C : ")
+    C = int(r.recvline()[:-1])
+    r.recvuntil("e : ")
+    e = int(r.recvline()[:-1])
+
+
+    
+    res = primefac.factorint(N)
+    print(res)
+    print(len(res))
+    phi_n = 1
+
+    for key, value in res.items():
+        phi_n = phi_n * (((key)**value) - ((key)**(value-1)))
+
+    
+    d = inverse(e, phi_n)
+
+    r.sendlineafter(" second\n", str(pow(C, d, N)))
+
+
+for i in range(13):
+    func()
+    r.sendline()
+
+r.interactive()
+    
