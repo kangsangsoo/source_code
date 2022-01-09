@@ -1,0 +1,38 @@
+from Crypto.Util.number import long_to_bytes
+from pwn import *
+import json
+import binascii
+
+r = remote("socket.cryptohack.org", 13399)
+
+r.recvuntil("Please authenticate to this Domain Controller to proceed\n")
+
+
+
+payload = {"option": "", "token": ""}
+payload["option"] = "reset_password"
+
+
+
+payload2 = {"option": "", "password": ""}
+payload2["option"] = "authenticate"
+payload2["password"] = "F"*8
+
+# plaintext가 0이 되는 경우를 찾자
+
+for i in range(256):
+    print(i)
+    payload["token"] = binascii.hexlify(long_to_bytes(i)).decode() * 28
+    r.sendline(json.dumps(payload))
+    # print(json.dumps(payload))
+    r.recvuntil('{"msg": "Password has been correctly reset."}\n')
+
+    r.sendline(json.dumps(payload2))
+    # print(json.dumps(payload2))
+    res = r.recvline()
+    print(res)
+    if b"flag" in res:
+            print(res)
+            break
+
+
